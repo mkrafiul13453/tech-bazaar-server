@@ -83,7 +83,7 @@ async function run() {
 
       await subscriptionsCollection.insertOne({
         sessionId, 
-        userId,
+        userId,   
         priceId,
       });
       await usersCollection.updateOne(
@@ -96,6 +96,7 @@ async function run() {
 
 
     app.post("/seller/products", verifyToken, sellerVerify, async(req,res)=>{
+     
       const data = req.body;
       // const id = data._id;
       // const isExist = await productsCollection.findOne({ _id: new ObjectId(id) });
@@ -110,12 +111,30 @@ async function run() {
 
 
     app.get("/seller/products", verifyToken, sellerVerify, async(req,res)=>{
-      const result = await productsCollection.find({userId:req.user.id}).toArray();
+      const { page = 1, limit = 10 } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+      const result = await productsCollection.find({userId:req.user.id}).skip(skip).limit(Number(limit)).toArray();
+      const totalData = await productsCollection.countDocuments({userId:req.user.id});
+      const totalPage = Math.ceil(totalData / Number(limit));
+      res.send({data:result,page:Number(page),totalPage})
+    }) 
+    
+    
+    app.get("/products", async(req,res)=>{
+      const {search} = req.query;
+      // console.log(search);
+      const query = {};
+      if(search && search!="undefined"){
+        query.$or = [
+          { title: { $regex: search, $options: "i" } },
+          { description: { $regex: search, $options: "i" } },
+        ];
+      }
+      const result = await productsCollection.find(query).toArray();
       res.send(result)
     })
-
-    
-
+      
+  
  
 
     // await client.db("admin").command({ ping: 1 });
